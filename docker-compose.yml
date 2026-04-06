@@ -1,0 +1,64 @@
+services:
+  otel-collector:
+    # image: otel/opentelemetry-collector-contrib:0.112.0
+    image: otel/opentelemetry-collector-contrib:0.126.0
+    container_name: otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/config.yaml"]
+    volumes:
+      - ./config/otel-collector/config.yml:/etc/config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
+    depends_on:
+      - tempo
+      - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./config/loki/config.yml:/etc/loki/config.yaml
+      - /srv/docker/otlp-demo/loki:/tmp/loki
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/config.yaml"]
+    volumes:
+      - ./config/tempo/config.yml:/etc/config.yaml
+      - /srv/docker/otlp-demo//tempo:/var/tempo
+
+  prometheus:
+    image: prom/prometheus:v2.53.2
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.retention.time=30d' # 配置存储中的数据保留时间
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-remote-write-receiver'
+      - '--enable-feature=exemplar-storage'
+      - '--enable-feature=native-histograms'
+    # ports:
+    #   - "9090:9090"
+    volumes:
+      - ./config/promethus/config.yml:/etc/prometheus/prometheus.yaml
+      - /srv/docker/otlp-demo/prometheus:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - /srv/docker/otlp-demo/grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - tempo
+      - prometheus
+      - loki
