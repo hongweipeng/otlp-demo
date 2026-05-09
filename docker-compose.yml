@@ -50,6 +50,19 @@ services:
       - ./config/promethus/config.yml:/etc/prometheus/prometheus.yaml
       - /srv/docker/otlp-demo/prometheus:/prometheus
 
+  jaeger: # 浏览器访问 http://localhost:16686
+    image: jaegertracing/all-in-one:1.41
+    container_name: jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    # https://opentelemetry.io/docs/languages/net/exporters/#jaeger-backend-setup
+    # https://opentelemetry.io/docs/collector/building/receiver/
+    ports:
+      - 16686:16686
+      #- 24317:4317
+      #- 24318:4318
+
   grafana:
     image: grafana/grafana:11.3.0
     container_name: grafana
@@ -62,3 +75,4 @@ services:
       - tempo
       - prometheus
       - loki
+      - jaeger
